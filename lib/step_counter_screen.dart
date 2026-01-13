@@ -1,10 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:confetti/confetti.dart';
 import 'step_counter_service.dart';
+import 'services/gameification_service.dart';
 import 'package:intl/intl.dart';
 import 'privacy_policy_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -20,6 +21,7 @@ class StepCounterScreen extends StatefulWidget {
 class _StepCounterScreenState extends State<StepCounterScreen>
     with SingleTickerProviderStateMixin {
   final StepCounterService _stepCounterService = StepCounterService();
+  final GameificationService _gameService = GameificationService();
   
   // Data States
   int _currentSteps = 0;
@@ -101,6 +103,9 @@ class _StepCounterScreenState extends State<StepCounterScreen>
         });
         _updateGoalCompletion();
         _checkGoalCompletion();
+        
+        // 检查成就和挑战
+        await _checkGameificationProgress(steps, dist * 1000, cal);
       }
     });
 
@@ -132,6 +137,22 @@ class _StepCounterScreenState extends State<StepCounterScreen>
     } else if (_goalCompletion < 1.0) {
       _hasShownCelebration = false;
     }
+  }
+
+  // 检查游戏化进度 (成就、挑战)
+  Future<void> _checkGameificationProgress(int steps, double distanceInMeters, double calories) async {
+    // 检查步数相关成就
+    await _gameService.checkStepAchievements(steps);
+    
+    // 检查距离相关成就
+    await _gameService.checkDistanceAchievements(distanceInMeters);
+    
+    // 更新挑战进度
+    await _gameService.checkChallengesForSteps(steps, distanceInMeters, calories);
+    
+    // 检查连续打卡成就
+    final streak = await _stepCounterService.getCurrentStreak();
+    await _gameService.checkStreakAchievements(streak);
   }
 
   void _showGoalAchievedDialog() {

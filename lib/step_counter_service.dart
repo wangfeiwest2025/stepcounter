@@ -213,6 +213,39 @@ class StepCounterService {
     return (total / 50000).floor() + 1;
   }
 
+  // Get current streak (consecutive days with goal achieved)
+  Future<int> getCurrentStreak() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final goal = await getDailyGoal();
+    
+    // Check if today is completed
+    final todayCompleted = (_dailySteps[today] ?? 0) >= goal;
+    
+    int streak = 0;
+    DateTime checkDate = DateTime.now();
+    
+    // If today is not completed yet, don't count it
+    if (!todayCompleted) {
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+    
+    // Count backwards
+    while (true) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(checkDate);
+      final daySteps = _dailySteps[dateStr] ?? 0;
+      
+      if (daySteps >= goal) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
   Future<ThemeMode> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
     final modeIndex = prefs.getInt('theme_mode') ?? 0;

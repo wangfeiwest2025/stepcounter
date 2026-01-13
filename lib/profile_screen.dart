@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'step_counter_service.dart';
+import 'services/gameification_service.dart';
+import 'screens/achievements_screen.dart';
+import 'screens/challenges_screen.dart';
+import 'screens/exercise_tracking_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -11,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final StepCounterService _service = StepCounterService();
+  final GameificationService _gameService = GameificationService();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
@@ -20,6 +25,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _totalSteps = 0;
   double _bmi = 0;
   String _bmiCategory = '';
+  int _unlockedAchievements = 0;
+  int _totalAchievements = 0;
 
   @override
   void initState() {
@@ -32,8 +39,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final height = await _service.getUserHeight();
     final weight = await _service.getUserWeight();
     final goal = await _service.getDailyGoal();
-    final level = await _service.calculateLevel();
+    final level = _gameService.userLevel?.level ?? 1;
     final total = await _service.getTotalSteps();
+    final unlocked = _gameService.unlockedAchievementsCount;
+    final totalAch = _gameService.totalAchievementsCount;
 
     setState(() {
       _nameController.text = name;
@@ -42,6 +51,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _goalController.text = goal.toString();
       _level = level;
       _totalSteps = total;
+      _unlockedAchievements = unlocked;
+      _totalAchievements = totalAch;
       _calculateBMI(height, weight);
     });
   }
@@ -95,6 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             _buildLevelHeader(),
+            const SizedBox(height: 20),
+            _buildGameFeatures(),
             const SizedBox(height: 20),
             _buildBMICard(),
             const SizedBox(height: 20),
@@ -260,39 +273,253 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatsOverview() {
+  Widget _buildGameFeatures() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('成就勋章', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 15),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _badgeItem(Icons.workspace_premium, '初级入门', _totalSteps > 1000),
-            _badgeItem(Icons.bolt, '速度之王', _totalSteps > 50000),
-            _badgeItem(Icons.directions_run, '远足达人', _totalSteps > 200000),
-            _badgeItem(Icons.emoji_events, '计步至尊', _totalSteps > 1000000),
+            Expanded(
+              child: _buildFeatureCard(
+                '成就殿堂',
+                '$_unlockedAchievements/$_totalAchievements',
+                Icons.emoji_events,
+                Colors.amber,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AchievementsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildFeatureCard(
+                '挑战任务',
+                '${_gameService.activeChallenges.length}个',
+                Icons.flag,
+                Colors.purple,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChallengesScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
+        const SizedBox(height: 12),
+        _buildExerciseTrackingCard(),
       ],
     );
   }
 
-  Widget _badgeItem(IconData icon, String label, bool unlocked) {
+  Widget _buildFeatureCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 36, color: color),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExerciseTrackingCard() {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ExerciseTrackingScreen(),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.green[400]!, Colors.teal[300]!],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.fitness_center,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '运动追踪',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '开始你的多样化运动之旅',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsOverview() {
+    final userLevel = _gameService.userLevel;
+    
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 40,
-          color: unlocked ? Colors.amber : Colors.grey[300],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(fontSize: 10, color: unlocked ? Colors.black : Colors.grey),
-        ),
+        const Text('等级进度', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 15),
+        if (userLevel != null)
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _getLevelIcon(userLevel.level),
+                            color: Colors.amber,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userLevel.title,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Lv.${userLevel.level}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${userLevel.currentExp}/${userLevel.expToNextLevel} EXP',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: userLevel.progress,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
+  }
+
+  IconData _getLevelIcon(int level) {
+    if (level >= 50) return Icons.military_tech;
+    if (level >= 40) return Icons.emoji_events;
+    if (level >= 30) return Icons.stars;
+    if (level >= 20) return Icons.local_fire_department;
+    if (level >= 10) return Icons.trending_up;
+    if (level >= 5) return Icons.favorite;
+    return Icons.catching_pokemon;
   }
 }
