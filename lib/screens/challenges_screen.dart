@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../models/challenge.dart';
 import '../services/gameification_service.dart';
+import '../widgets/loading_skeleton.dart';
+import '../widgets/empty_state.dart';
 
 class ChallengesScreen extends StatefulWidget {
   const ChallengesScreen({super.key});
@@ -12,9 +14,34 @@ class ChallengesScreen extends StatefulWidget {
 
 class _ChallengesScreenState extends State<ChallengesScreen> {
   final GameificationService _gameService = GameificationService();
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 模拟加载延迟
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('挑战任务'),
+          elevation: 0,
+        ),
+        body: const ListLoadingSkeleton(itemCount: 6),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('挑战任务'),
@@ -53,7 +80,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
   Widget _buildMotivationalCard() {
     final activeChallenges = _gameService.activeChallenges;
     final completedToday = _gameService.completedChallenges
-                .where((c) => (c as Challenge).type == ChallengeType.daily && (c as Challenge).isCompleted)
+        .where((c) => c.type == ChallengeType.daily && c.isCompleted)
         .length;
 
     return Container(
@@ -78,24 +105,62 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.emoji_events, color: Colors.white, size: 28),
-              SizedBox(width: 12),
+              Icon(Icons.local_fire_department, color: Colors.amber, size: 28),
+              SizedBox(width: 8),
               Text(
-                '挑战进度',
+                '今日挑战',
                 style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatItem('活跃挑战', '${activeChallenges.length}'),
-              _buildStatItem('今日完成', '$completedToday'),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${activeChallenges.length}',
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Text(
+                    '进行中',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$completedToday',
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Text(
+                    '已完成',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ],
@@ -103,39 +168,17 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 24, color: Colors.grey[700]),
+        Icon(icon, color: Colors.deepPurple),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
           ),
         ),
       ],
@@ -144,226 +187,198 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
 
   Widget _buildDailyChallenges() {
     final dailyChallenges = _gameService.activeChallenges
-        .where((c) => (c as Challenge).type == ChallengeType.daily)
-        .cast<Challenge>()
+        .where((c) => c.type == ChallengeType.daily)
         .toList();
 
     if (dailyChallenges.isEmpty) {
-      return _buildEmptyState('今日挑战已全部完成！');
+      return _buildEmptyState('今日暂无挑战', '明天再来看看有什么新挑战吧！');
     }
 
     return Column(
-      children: dailyChallenges.map((challenge) => 
-        _buildChallengeCard(challenge)
-      ).toList(),
+      children: dailyChallenges.map((challenge) => _buildChallengeCard(challenge)).toList(),
     );
   }
 
   Widget _buildWeeklyChallenges() {
     final weeklyChallenges = _gameService.activeChallenges
-        .where((c) => (c as Challenge).type == ChallengeType.weekly)
-        .cast<Challenge>()
+        .where((c) => c.type == ChallengeType.weekly)
         .toList();
 
     if (weeklyChallenges.isEmpty) {
-      return _buildEmptyState('本周挑战已全部完成！');
+      return _buildEmptyState('本周暂无挑战', '期待下周的挑战吧！');
     }
 
     return Column(
-      children: weeklyChallenges.map((challenge) => 
-        _buildChallengeCard(challenge)
-      ).toList(),
+      children: weeklyChallenges.map((challenge) => _buildChallengeCard(challenge)).toList(),
     );
   }
 
   Widget _buildCompletedChallenges() {
-    final completed = _gameService.completedChallenges.take(5).cast<Challenge>().toList();
+    final completedChallenges = _gameService.completedChallenges;
 
-    if (completed.isEmpty) {
-      return _buildEmptyState('还没有完成的挑战');
+    if (completedChallenges.isEmpty) {
+      return _buildEmptyState('暂无已完成挑战', '完成挑战可获得经验值奖励！');
     }
 
     return Column(
-      children: completed.map((challenge) => 
-        _buildChallengeCard(challenge, isCompleted: true)
-      ).toList(),
+      children: completedChallenges.map((challenge) => _buildChallengeCard(challenge, isCompleted: true)).toList(),
     );
   }
 
-  Widget _buildEmptyState(String message) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.check_circle_outline, size: 60, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: TextStyle(color: Colors.grey[500], fontSize: 16),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildEmptyState(String title, String subtitle) {
+    return EnhancedEmptyState(
+      icon: Icons.inbox_outlined,
+      iconColor: Colors.grey,
+      title: title,
+      description: subtitle,
+      tips: [
+        const Text('挑战任务会在每天/每周开始时自动生成'),
+        const Text('完成挑战可获得额外经验值奖励'),
+      ],
     );
   }
 
   Widget _buildChallengeCard(Challenge challenge, {bool isCompleted = false}) {
-    final Color accentColor = _getChallengeColor(challenge.type);
-    final progress = challenge.progress;
+    final progress = (challenge.currentValue / challenge.targetValue).clamp(0.0, 1.0);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
       elevation: isCompleted ? 1 : 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: isCompleted 
-              ? null 
+          gradient: isCompleted
+              ? null
               : LinearGradient(
                   colors: [
-                    accentColor.withOpacity(0.05),
+                    _getChallengeColor(challenge.category).withOpacity(0.1),
                     Colors.white,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // 进度圆环
-              CircularPercentIndicator(
-                radius: 35,
-                lineWidth: 6,
-                percent: progress,
-                center: Icon(
-                  isCompleted ? Icons.check : _getChallengeIcon(challenge),
-                  color: accentColor,
-                  size: 28,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (isCompleted ? Colors.grey : _getChallengeColor(challenge.category)).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.check : _getChallengeIcon(challenge),
+                    color: isCompleted ? Colors.grey : _getChallengeColor(challenge.category),
+                  ),
                 ),
-                progressColor: accentColor,
-                backgroundColor: Colors.grey[200]!,
-                circularStrokeCap: CircularStrokeCap.round,
-              ),
-              const SizedBox(width: 16),
-              // 挑战信息
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            challenge.title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isCompleted ? Colors.grey : Colors.black87,
-                              decoration: isCompleted 
-                                  ? TextDecoration.lineThrough 
-                                  : null,
-                            ),
-                          ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        challenge.title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: isCompleted ? Colors.grey : Colors.black87,
                         ),
-                        if (!isCompleted)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              challenge.timeRemaining,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: accentColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      challenge.description,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.grey[200],
-                            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                            borderRadius: BorderRadius.circular(4),
-                            minHeight: 6,
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        challenge.description,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isCompleted ? Colors.grey[400] : Colors.grey[600],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${challenge.currentValue}/${challenge.targetValue}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (isCompleted) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.stars, size: 16, color: Colors.amber[700]),
-                          const SizedBox(width: 4),
-                          Text(
-                            '+${challenge.expReward} 经验值',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.amber[700],
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
-                  ],
+                  ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? Colors.grey[200]
+                        : _getChallengeColor(challenge.category).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '+${challenge.expReward} EXP',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isCompleted ? Colors.grey : _getChallengeColor(challenge.category),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (!isCompleted) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(6),
+                      minHeight: 8,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _getChallengeColor(challenge.category),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${challenge.currentValue}/${challenge.targetValue}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Color _getChallengeColor(ChallengeType type) {
-    switch (type) {
-      case ChallengeType.daily:
+  Color _getChallengeColor(ChallengeCategory category) {
+    switch (category) {
+      case ChallengeCategory.steps:
         return Colors.blue;
-      case ChallengeType.weekly:
+      case ChallengeCategory.distance:
         return Colors.green;
-      case ChallengeType.special:
+      case ChallengeCategory.calories:
+        return Colors.orange;
+      case ChallengeCategory.time:
         return Colors.purple;
+      case ChallengeCategory.achievement:
+        return Colors.amber;
+      default:
+        return Colors.deepPurple;
     }
   }
 
   IconData _getChallengeIcon(Challenge challenge) {
-    if (challenge.id.contains('steps')) return Icons.directions_walk;
-    if (challenge.id.contains('distance')) return Icons.map;
-    if (challenge.id.contains('calories')) return Icons.local_fire_department;
-    if (challenge.id.contains('streak')) return Icons.whatshot;
-    return Icons.flag;
+    if (challenge.id.contains('steps')) {
+      return Icons.directions_walk;
+    } else if (challenge.id.contains('distance')) {
+      return Icons.map;
+    } else if (challenge.id.contains('calories')) {
+      return Icons.local_fire_department;
+    } else if (challenge.id.contains('time')) {
+      return Icons.timer;
+    } else if (challenge.id.contains('exercise')) {
+      return Icons.fitness_center;
+    }
+    return Icons.star;
   }
 }

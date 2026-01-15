@@ -1,11 +1,26 @@
 import 'package:intl/intl.dart';
 
+enum ChallengeType {
+  daily,    // 每日挑战
+  weekly,   // 每周挑战
+  special,  // 特殊活动
+}
+
+enum ChallengeCategory {
+  steps,
+  distance,
+  calories,
+  time,
+  achievement,
+}
+
 // 挑战任务模型
 class Challenge {
   final String id;
   final String title;
   final String description;
   final ChallengeType type;
+  final ChallengeCategory category;
   final int targetValue;
   int currentValue;
   final int expReward;
@@ -18,6 +33,7 @@ class Challenge {
     required this.title,
     required this.description,
     required this.type,
+    this.category = ChallengeCategory.steps,
     required this.targetValue,
     this.currentValue = 0,
     this.expReward = 50,
@@ -46,6 +62,7 @@ class Challenge {
       'title': title,
       'description': description,
       'type': type.toString(),
+      'category': category.toString(),
       'targetValue': targetValue,
       'currentValue': currentValue,
       'expReward': expReward,
@@ -64,6 +81,10 @@ class Challenge {
         (e) => e.toString() == json['type'],
         orElse: () => ChallengeType.daily,
       ),
+      category: ChallengeCategory.values.firstWhere(
+        (e) => e.toString() == json['category'],
+        orElse: () => ChallengeCategory.steps,
+      ),
       targetValue: json['targetValue'] as int,
       currentValue: json['currentValue'] as int? ?? 0,
       expReward: json['expReward'] as int? ?? 50,
@@ -72,12 +93,6 @@ class Challenge {
       isCompleted: json['isCompleted'] as bool? ?? false,
     );
   }
-}
-
-enum ChallengeType {
-  daily,    // 每日挑战
-  weekly,   // 每周挑战
-  special,  // 特殊活动
 }
 
 // 挑战任务生成器
@@ -104,6 +119,7 @@ class ChallengeGenerator {
         title: '距离挑战',
         description: '今日步行5公里',
         type: ChallengeType.daily,
+        category: ChallengeCategory.distance,
         targetValue: 5000, // 5km in meters
         expReward: 30,
         startDate: startOfDay,
@@ -114,6 +130,7 @@ class ChallengeGenerator {
         title: '燃烧卡路里',
         description: '今日消耗300千卡',
         type: ChallengeType.daily,
+        category: ChallengeCategory.calories,
         targetValue: 300,
         expReward: 40,
         startDate: startOfDay,

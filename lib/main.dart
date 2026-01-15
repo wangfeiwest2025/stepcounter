@@ -3,10 +3,12 @@ import 'main_container.dart';
 import 'background_service.dart';
 import 'privacy_policy_dialog.dart';
 import 'step_counter_service.dart';
+import 'services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeService();
+  await ThemeService().initialize();
   runApp(const MyApp());
 }
 
@@ -27,16 +29,33 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _loadTheme() async {
-    final mode = await StepCounterService().getThemeMode();
+    await ThemeService().initialize();
+    final mode = ThemeService().currentMode;
     setState(() {
-      _themeMode = mode;
+      _themeMode = ThemeService().getThemeMode(mode);
+    });
+
+    // 监听主题变化
+    ThemeService().themeStream.listen((mode) {
+      setState(() {
+        _themeMode = ThemeService().getThemeMode(mode);
+      });
     });
   }
 
   void updateTheme(ThemeMode mode) {
-    setState(() {
-      _themeMode = mode;
-    });
+    ThemeModeOption option;
+    switch (mode) {
+      case ThemeMode.light:
+        option = ThemeModeOption.light;
+        break;
+      case ThemeMode.dark:
+        option = ThemeModeOption.dark;
+        break;
+      default:
+        option = ThemeModeOption.system;
+    }
+    ThemeService().setTheme(option);
   }
 
   @override

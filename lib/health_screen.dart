@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'step_counter_service.dart';
+import 'widgets/loading_skeleton.dart';
 
 class HealthScreen extends StatefulWidget {
   const HealthScreen({super.key});
@@ -13,6 +14,7 @@ class _HealthScreenState extends State<HealthScreen> {
   int _waterCount = 0;
   bool _sedentaryEnabled = false;
   int _sedentaryInterval = 60;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -21,6 +23,10 @@ class _HealthScreenState extends State<HealthScreen> {
   }
 
   Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final water = await _service.getTodayWater();
     final enabled = await _service.isSedentaryReminderEnabled();
     final interval = await _service.getSedentaryInterval();
@@ -29,6 +35,7 @@ class _HealthScreenState extends State<HealthScreen> {
         _waterCount = water;
         _sedentaryEnabled = enabled;
         _sedentaryInterval = interval;
+        _isLoading = false;
       });
     }
   }
@@ -39,7 +46,9 @@ class _HealthScreenState extends State<HealthScreen> {
       appBar: AppBar(
         title: const Text('健康生态'),
       ),
-      body: ListView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
           _buildWaterCard(),

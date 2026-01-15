@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:confetti/confetti.dart';
 import 'step_counter_service.dart';
 import 'services/gameification_service.dart';
+import 'services/haptic_service.dart';
 import 'package:intl/intl.dart';
 import 'privacy_policy_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -72,7 +73,7 @@ class _StepCounterScreenState extends State<StepCounterScreen>
     super.dispose();
   }
 
-  void _loadProfileData() async {
+  Future<void> _loadProfileData() async {
     final name = await _stepCounterService.getUserName();
     final cal = await _stepCounterService.getCaloriesBurned();
     final dist = await _stepCounterService.getDistanceInKm();
@@ -132,7 +133,8 @@ class _StepCounterScreenState extends State<StepCounterScreen>
     if (_goalCompletion >= 1.0 && !_hasShownCelebration) {
       _confettiController.play();
       _hasShownCelebration = true;
-      // Also trigger haptic feedback if possible (requires vibrate package, skipping for now)
+      // 触发成功震动
+      HapticService().success();
       _showGoalAchievedDialog();
     } else if (_goalCompletion < 1.0) {
       _hasShownCelebration = false;
@@ -141,18 +143,63 @@ class _StepCounterScreenState extends State<StepCounterScreen>
 
   // 检查游戏化进度 (成就、挑战)
   Future<void> _checkGameificationProgress(int steps, double distanceInMeters, double calories) async {
+    // 检查步数里程碑并触发震动
+    _checkStepMilestones(steps);
+
     // 检查步数相关成就
     await _gameService.checkStepAchievements(steps);
-    
+
     // 检查距离相关成就
     await _gameService.checkDistanceAchievements(distanceInMeters);
-    
+
     // 更新挑战进度
     await _gameService.checkChallengesForSteps(steps, distanceInMeters, calories);
-    
+
     // 检查连续打卡成就
     final streak = await _stepCounterService.getCurrentStreak();
     await _gameService.checkStreakAchievements(streak);
+  }
+
+  // 检查步数里程碑
+  void _checkStepMilestones(int steps) {
+    // 里程碑: 1000, 5000, 10000, 20000, 30000...
+    final milestones = [1000, 5000, 10000, 20000, 30000, 50000];
+
+    for (var milestone in milestones) {
+      if (steps == milestone) {
+        HapticService().milestone();
+        break; // 只触发一次
+      } else if (steps > milestone && steps < milestone + 100) {
+        // 在里程碑后的100步内也触发，避免错过
+        HapticService().milestone();
+        break;
+      }
+      }
+  }
+
+  // 处理下拉刷新
+  Future<void> _handleRefresh() async {
+    // 触发轻微信动
+    await HapticService().light();
+
+    // 同步数据
+    _stepCounterService.synchronize();
+
+    // 重新加载个人资料数据
+    await _loadProfileData();
+
+    // 显示刷新提示
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ 数据已刷新'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: Colors.black87,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _showGoalAchievedDialog() {
@@ -223,41 +270,46 @@ class _StepCounterScreenState extends State<StepCounterScreen>
         ? const Color(0xFF00C853) // Green for success
         : const Color(0xFF6B66FF); // Default Purple-Blue
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Main Content
-          CustomScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              _buildAppBar(), // Simplified AppBar
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 10), // Space for status bar/AppBar
-                      _buildHeader(), // New Header Section
-                      const SizedBox(height: 20),
-                      Center(child: _buildMainIndicator(primaryColor)),
-                      const SizedBox(height: 30),
-                      Center(child: _buildStatusChip(primaryColor)),
-                      const SizedBox(height: 40),
-                      _buildStatsGrid(),
-                      const SizedBox(height: 30),
-                      _buildInsightCard(primaryColor),
-                      const SizedBox(height: 30),
-                      _buildWeeklyChart(primaryColor),
-                      const SizedBox(height: 100),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+     return Scaffold(
+       backgroundColor: Colors.white,
+       body: Stack(
+         children: [
+           // Main Content with RefreshIndicator
+           RefreshIndicator(
+             onRefresh: _handleRefresh,
+             backgroundColor: Colors.white,
+             color: const Color(0xFF6B66FF),
+             child: CustomScrollView(
+               controller: _scrollController,
+               physics: const BouncingScrollPhysics(),
+               slivers: [
+                 _buildAppBar(), // Simplified AppBar
+                 SliverToBoxAdapter(
+                   child: Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         const SizedBox(height: 10), // Space for status bar/AppBar
+                         _buildHeader(), // New Header Section
+                         const SizedBox(height: 20),
+                         Center(child: _buildMainIndicator(primaryColor)),
+                         const SizedBox(height: 30),
+                         Center(child: _buildStatusChip(primaryColor)),
+                         const SizedBox(height: 40),
+                         _buildStatsGrid(),
+                         const SizedBox(height: 30),
+                         _buildInsightCard(primaryColor),
+                         const SizedBox(height: 30),
+                         _buildWeeklyChart(primaryColor),
+                         const SizedBox(height: 100),
+                       ],
+                     ),
+                   ),
+                 ),
+               ],
+             ),
+           ),
 
           // Confetti Overlay
           Align(

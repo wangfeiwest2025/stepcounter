@@ -5,6 +5,8 @@ import 'services/gameification_service.dart';
 import 'screens/achievements_screen.dart';
 import 'screens/challenges_screen.dart';
 import 'screens/exercise_tracking_screen.dart';
+import 'widgets/loading_skeleton.dart';
+import 'widgets/theme_selector.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _bmiCategory = '';
   int _unlockedAchievements = 0;
   int _totalAchievements = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -35,6 +38,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final name = await _service.getUserName();
     final height = await _service.getUserHeight();
     final weight = await _service.getUserWeight();
@@ -44,17 +51,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final unlocked = _gameService.unlockedAchievementsCount;
     final totalAch = _gameService.totalAchievementsCount;
 
-    setState(() {
-      _nameController.text = name;
-      _heightController.text = height.toString();
-      _weightController.text = weight.toString();
-      _goalController.text = goal.toString();
-      _level = level;
-      _totalSteps = total;
-      _unlockedAchievements = unlocked;
-      _totalAchievements = totalAch;
-      _calculateBMI(height, weight);
-    });
+    if (mounted) {
+      setState(() {
+        _nameController.text = name;
+        _heightController.text = height.toString();
+        _weightController.text = weight.toString();
+        _goalController.text = goal.toString();
+        _level = level;
+        _totalSteps = total;
+        _unlockedAchievements = unlocked;
+        _totalAchievements = totalAch;
+        _calculateBMI(height, weight);
+        _isLoading = false;
+      });
+    }
   }
 
   void _calculateBMI(double heightCm, double weightKg) {
@@ -97,11 +107,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: _saveProfile,
+            onPressed: _isLoading ? null : _saveProfile,
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -110,6 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildGameFeatures(),
             const SizedBox(height: 20),
             _buildBMICard(),
+            const SizedBox(height: 20),
+            _buildThemeSettings(),
             const SizedBox(height: 20),
             _buildProfileFields(),
             const SizedBox(height: 30),
@@ -434,6 +448,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildThemeSettings() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: const Column(
+        children: [
+          ThemeToggleButton(),
+        ],
       ),
     );
   }

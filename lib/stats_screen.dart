@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'step_counter_service.dart';
+import 'widgets/loading_skeleton.dart';
+import 'widgets/export_dialog.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -15,6 +17,7 @@ class _StatsScreenState extends State<StatsScreen> {
   int _weeklyAverage = 0;
   int _monthlyAverage = 0;
   String _selectedRange = '周'; // '周' or '月'
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -23,12 +26,17 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Future<void> _loadStats() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final weeklyAvg = await _service.getWeeklyAverage();
     final monthlyAvg = await _service.getMonthlyAverage();
     if (mounted) {
       setState(() {
         _weeklyAverage = weeklyAvg;
         _monthlyAverage = monthlyAvg;
+        _isLoading = false;
       });
     }
   }
@@ -53,38 +61,59 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildToggleButtons(),
-            const SizedBox(height: 20),
-            _buildChartCard(),
-            const SizedBox(height: 20),
-            _buildAveragesCard(),
-            const SizedBox(height: 20),
-            _buildHistoryList(),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildToggleButtons(),
+                  const SizedBox(height: 20),
+                  _buildChartCard(),
+                  const SizedBox(height: 20),
+                  _buildAveragesCard(),
+                  const SizedBox(height: 20),
+                  _buildHistoryList(),
+                ],
+              ),
+            ),
     );
   }
 
   Widget _buildToggleButtons() {
-    return Center(
-      child: SegmentedButton<String>(
-        segments: const [
-          ButtonSegment(value: '周', label: Text('最近7天')),
-          ButtonSegment(value: '月', label: Text('最近30天')),
-        ],
-        selected: {_selectedRange},
-        onSelectionChanged: (newSelection) {
-          setState(() {
-            _selectedRange = newSelection.first;
-          });
-        },
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: '周', label: Text('最近7天')),
+              ButtonSegment(value: '月', label: Text('最近30天')),
+            ],
+            selected: {_selectedRange},
+            onSelectionChanged: (newSelection) {
+              setState(() {
+                _selectedRange = newSelection.first;
+              });
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: Icon(
+              Icons.file_download,
+              color: Theme.of(context).primaryColor,
+            ),
+            onPressed: () => showExportDialog(context),
+            tooltip: '导出数据',
+          ),
+        ),
+      ],
     );
   }
 

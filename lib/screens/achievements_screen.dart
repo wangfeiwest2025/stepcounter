@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../models/achievement.dart';
 import '../services/gameification_service.dart';
+import '../services/haptic_service.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/loading_skeleton.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
@@ -10,22 +13,34 @@ class AchievementsScreen extends StatefulWidget {
   State<AchievementsScreen> createState() => _AchievementsScreenState();
 }
 
-class _AchievementsScreenState extends State<AchievementsScreen> 
+class _AchievementsScreenState extends State<AchievementsScreen>
     with SingleTickerProviderStateMixin {
   final GameificationService _gameService = GameificationService();
   late TabController _tabController;
   late ConfettiController _confettiController;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: AchievementCategory.values.length + 1, vsync: this);
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
-    
+
     // 监听新成就解锁
     _gameService.achievementUnlockedStream.listen((achievement) {
       _confettiController.play();
+      // 触发成就解锁震动
+      HapticService().achievement();
       _showAchievementUnlockedDialog(achievement as Achievement);
+    });
+
+    // 模拟加载延迟
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     });
   }
 
@@ -103,6 +118,15 @@ class _AchievementsScreenState extends State<AchievementsScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('成就殿堂'),
+        ),
+        body: const ListLoadingSkeleton(itemCount: 8),
+      );
+    }
+
     final achievements = _gameService.achievements;
     final unlockedCount = _gameService.unlockedAchievementsCount;
     final totalCount = _gameService.totalAchievementsCount;
@@ -212,19 +236,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
 
   Widget _buildAchievementList(List<Achievement> achievements) {
     if (achievements.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.emoji_events_outlined, size: 80, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              '暂无成就',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          ],
-        ),
-      );
+      return const AchievementEmptyState();
     }
 
     // 先显示已解锁的,再显示未解锁的

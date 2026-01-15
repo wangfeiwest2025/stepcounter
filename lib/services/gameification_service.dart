@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/achievement.dart';
 import '../models/user_level.dart';
 import '../models/challenge.dart';
+import 'haptic_service.dart';
 
 class GameificationService {
   static final GameificationService _instance = GameificationService._internal();
@@ -284,6 +285,8 @@ class GameificationService {
     if (challenge.currentValue >= challenge.targetValue && !challenge.isCompleted) {
       challenge.isCompleted = true;
       await addExp(challenge.expReward, reason: '完成挑战: ${challenge.title}');
+      // 触发成功震动
+      HapticService().success();
       print('✅ 完成挑战: ${challenge.title}');
     }
     
