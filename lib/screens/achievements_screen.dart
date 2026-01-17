@@ -259,72 +259,75 @@ class _AchievementsScreenState extends State<AchievementsScreen>
   Widget _buildAchievementCard(Achievement achievement) {
     final isLocked = !achievement.isUnlocked;
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: isLocked ? 1 : 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: isLocked
-              ? null
-              : LinearGradient(
-                  colors: [
-                    _getCategoryColor(achievement.category).withOpacity(0.1),
-                    Colors.white,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-        ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: _buildAchievementIcon(achievement),
-          title: Text(
-            achievement.title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isLocked ? Colors.grey : Colors.black87,
-            ),
+    return Hero(
+      tag: 'achievement_${achievement.id}',
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        elevation: isLocked ? 1 : 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: isLocked
+                ? null
+                : LinearGradient(
+                    colors: [
+                      _getCategoryColor(achievement.category).withOpacity(0.1),
+                      Colors.white,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Text(
-                isLocked ? '???' : achievement.description,
-                style: TextStyle(
-                  color: isLocked ? Colors.grey[400] : Colors.grey[600],
-                ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: _buildAchievementIcon(achievement),
+            title: Text(
+              achievement.title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isLocked ? Colors.grey : Colors.black87,
               ),
-              if (achievement.isUnlocked && achievement.unlockedAt != null) ...[
-                const SizedBox(height: 8),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
                 Text(
-                  '解锁于 ${_formatDate(achievement.unlockedAt!)}',
+                  isLocked ? '???' : achievement.description,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
+                    color: isLocked ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
+                if (achievement.isUnlocked && achievement.unlockedAt != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '解锁于 ${_formatDate(achievement.unlockedAt!)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isLocked 
-                  ? Colors.grey[200]
-                  : _getCategoryColor(achievement.category).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              '+${achievement.expReward} EXP',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
                 color: isLocked 
-                    ? Colors.grey 
-                    : _getCategoryColor(achievement.category),
+                    ? Colors.grey[200]
+                    : _getCategoryColor(achievement.category).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '+${achievement.expReward} EXP',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isLocked 
+                      ? Colors.grey 
+                      : _getCategoryColor(achievement.category),
+                ),
               ),
             ),
           ),

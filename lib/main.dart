@@ -4,6 +4,8 @@ import 'background_service.dart';
 import 'privacy_policy_dialog.dart';
 import 'step_counter_service.dart';
 import 'services/theme_service.dart';
+import 'services/onboarding_service.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -179,10 +181,25 @@ class _PrivacyPolicyWrapperState extends State<PrivacyPolicyWrapper> {
       );
 
       if (permissionAccepted ?? false) {
-        setState(() {
-          _privacyAccepted = true;
-          _loading = false;
-        });
+        // 检查是否需要显示引导页面
+        final onboardingCompleted = await OnboardingService.isOnboardingCompleted();
+        if (mounted) {
+          setState(() {
+            _privacyAccepted = true;
+            _loading = false;
+          });
+          
+          // 如果引导未完成，稍后显示引导页面
+          if (!onboardingCompleted) {
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                );
+              }
+            });
+          }
+        }
       } else {
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
